@@ -85,7 +85,7 @@ const navigation = computed(() => {
           :to="item.path"
           @click="closeMobileMenu"
           class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors hover:bg-zinc-100 hover:text-zinc-900"
-          active-class="bg-zinc-100 text-zinc-900 font-semibold"
+          exact-active-class="bg-zinc-100 text-zinc-900 font-semibold"
         >
           <component :is="item.icon" class="w-5 h-5 text-zinc-500" />
           {{ item.name }}
