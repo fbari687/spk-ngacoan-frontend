@@ -36,8 +36,8 @@ Ikuti panduan berikut untuk menjalankan proyek *frontend* di komputer lokal Anda
 
 ### 1. Klon Repositori
 ```bash
-git clone https://github.com/USERNAME_KAMU/NAMA_REPO_FRONTEND.git
-cd NAMA_REPO_FRONTEND
+git clone https://github.com/fbari687/spk-ngacoan-frontend
+cd spk-ngacoan-frontend
 ```
 
 ### 2. Instalasi Dependensi Node Modules
