@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, watch, nextTick, defineAsyncComponent } from 'vue'
 import api from '../axios'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,7 +20,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-// import { GoogleMap, AdvancedMarker, Pin, InfoWindow } from 'vue3-google-map'
+const GoogleMap = defineAsyncComponent(() => import('vue3-google-map').then((m) => m.GoogleMap))
+
+const AdvancedMarker = defineAsyncComponent(() =>
+  import('vue3-google-map').then((m) => m.AdvancedMarker),
+)
+
+const Pin = defineAsyncComponent(() => import('vue3-google-map').then((m) => m.Pin))
+
+const InfoWindow = defineAsyncComponent(() => import('vue3-google-map').then((m) => m.InfoWindow))
 import { Plus, Pencil, Trash2, Loader2, Users, MapPin, Phone } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.js'
 
