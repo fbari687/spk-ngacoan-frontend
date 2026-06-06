@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, nextTick, defineAsyncComponent } from 'vue'
+import { ref, onMounted } from 'vue'
 import api from '../axios'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,20 +20,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-const GoogleMap = defineAsyncComponent(() => import('vue3-google-map').then((m) => m.GoogleMap))
-
-const AdvancedMarker = defineAsyncComponent(() =>
-  import('vue3-google-map').then((m) => m.AdvancedMarker),
-)
-
-const Pin = defineAsyncComponent(() => import('vue3-google-map').then((m) => m.Pin))
-
-const InfoWindow = defineAsyncComponent(() => import('vue3-google-map').then((m) => m.InfoWindow))
 import { Plus, Pencil, Trash2, Loader2, Users, MapPin, Phone } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.js'
 
 const authStore = useAuthStore()
-const MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 
 // 1. State Management
 const suppliers = ref([])
@@ -43,9 +33,6 @@ const isDialogOpen = ref(false)
 const isEditing = ref(false)
 const currentId = ref(null)
 const serverError = ref('')
-
-const placeInputRef = ref(null) // Mengikat elemen DOM input nama
-const mapCenter = ref({ lat: -6.1754, lng: 106.8272 }) // Default Jakarta pusat
 
 const form = ref({
   name: '',
@@ -91,88 +78,6 @@ const openEditDialog = (item) => {
   isDialogOpen.value = true
 }
 
-// Fungsi Koordinat
-const handleMapClick = (event) => {
-  const lat = event.latLng.lat()
-  const lng = event.latLng.lng()
-
-  // 1. Set data koordinat ke form
-  form.value.latitude = lat.toString()
-  form.value.longitude = lng.toString()
-
-  // 2. Panggil Geocoder untuk mencari nama alamat fisik berdasarkan koordinat klik
-  const geocoder = new google.maps.Geocoder()
-  geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-    if (status === 'OK' && results[0]) {
-      // Masukkan teks alamat resmi dari Google ke dalam form textarea
-      form.value.address = results[0].formatted_address
-    } else {
-      console.warn('Geocoder gagal mengenali titik koordinat tersebut: ' + status)
-    }
-  })
-}
-
-// Fungsi untuk mengaktifkan Google Places Autocomplete pada Input Teks
-const initAutocomplete = () => {
-  // Guard Clause: Pastikan library Google Places sudah siap 100% di browser
-  if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
-    console.warn('Pustaka Google Places belum siap. Mencoba memanggil ulang...')
-    return
-  }
-
-  if (!placeInputRef.value) {
-    console.warn('Elemen textarea Alamat Lengkap belum ditemukan di DOM.')
-    return
-  }
-
-  // Mengambil elemen HTML murni (textarea)
-  const inputElement = placeInputRef.value.$el || placeInputRef.value
-
-  // Buat instance Autocomplete baru
-  const autocomplete = new google.maps.places.Autocomplete(inputElement, {
-    types: ['establishment', 'geocode'],
-    componentRestrictions: { country: 'id' },
-    fields: ['geometry', 'name', 'formatted_address'],
-  })
-
-  // Sinkronisasi Z-Index & Proteksi Klik Tembus secara Real-time saat input difokuskan
-  inputElement.addEventListener('focus', () => {
-    const pacContainers = document.querySelectorAll('.pac-container')
-    pacContainers.forEach((container) => {
-      container.style.zIndex = '9999' // Naikkan ke lapisan paling depan melompati Dialog
-      container.style.pointerEvents = 'auto' // Hidupkan fungsi klik mouse/sentuhan
-
-      // Amankan agar ketukan tidak tembus (bubbling) menghantam kanvas peta di bawahnya
-      if (!container.dataset.secured) {
-        container.addEventListener('mousedown', (e) => e.stopPropagation(), true)
-        container.addEventListener('click', (e) => e.stopPropagation(), true)
-        container.dataset.secured = 'true'
-      }
-    })
-  })
-
-  // Event ketika user memilih salah satu rekomendasi dari Google
-  autocomplete.addListener('place_changed', () => {
-    const place = autocomplete.getPlace()
-    if (!place.geometry || !place.geometry.location) return
-
-    const lat = place.geometry.location.lat()
-    const lng = place.geometry.location.lng()
-
-    // Jika input nama masih kosong, isi dengan nama tempat dari Google
-    // if (!form.value.name) {
-    //   form.value.name = place.name
-    // }
-
-    form.value.address = place.formatted_address || form.value.address
-    form.value.latitude = lat.toString()
-    form.value.longitude = lng.toString()
-
-    // Geser kamera tengah peta ke lokasi baru
-    mapCenter.value = { lat, lng }
-  })
-}
-
 // 4. Action: Simpan Data (Store / Update)
 const handleSubmit = async () => {
   isSubmitLoading.value = true
@@ -208,25 +113,6 @@ const handleDelete = async (id) => {
     }
   }
 }
-
-watch(isDialogOpen, async (newVal) => {
-  if (newVal) {
-    // Set koordinat peta jika sedang dalam mode Edit Data Supplier
-    if (form.value.latitude && form.value.longitude) {
-      mapCenter.value = {
-        lat: parseFloat(form.value.latitude),
-        lng: parseFloat(form.value.longitude),
-      }
-    }
-
-    // WAJIB: Berikan jeda waktu (delay) kecil setelah nextTick agar animasi dialog
-    // Shadcn UI selesai terbuka sempurna dan elemen textarea resmi eksis di halaman.
-    await nextTick()
-    setTimeout(() => {
-      initAutocomplete()
-    }, 400) // Jeda 400ms sangat krusial untuk memastikan komponen siap di-binding
-  }
-})
 
 onMounted(() => {
   fetchSuppliers()
@@ -285,7 +171,6 @@ onMounted(() => {
             <TableHead class="w-24 font-semibold text-zinc-700">Kode</TableHead>
             <TableHead class="font-semibold text-zinc-700">Nama Pemasok</TableHead>
             <TableHead class="font-semibold text-zinc-700">Alamat Lengkap</TableHead>
-            <TableHead class="font-semibold text-zinc-700">Google Maps</TableHead>
             <TableHead class="w-48 font-semibold text-zinc-700">No. Telepon</TableHead>
             <TableHead v-if="authStore.isOwner" class="w-28 text-right font-semibold text-zinc-700"
               >Aksi</TableHead
@@ -304,41 +189,6 @@ onMounted(() => {
               <div class="flex items-start gap-2">
                 <MapPin class="w-4 h-4 text-zinc-400 shrink-0 mt-0.5" v-if="item.address" />
                 <span class="truncate max-w-75">{{ item.address || '-' }}</span>
-              </div>
-            </TableCell>
-            <TableCell class="text-zinc-600">
-              <div
-                v-if="item.latitude && item.longitude"
-                class="w-64 h-64 rounded-lg overflow-hidden border border-zinc-200 shadow-inner"
-              >
-                <GoogleMap
-                  :api-key="MAPS_API_KEY"
-                  style="width: 100%; height: 100%"
-                  :center="{ lat: parseFloat(item.latitude), lng: parseFloat(item.longitude) }"
-                  :zoom="13"
-                  map-id="DEMO_MAP_ID"
-                  :disable-default-ui="true"
-                  :gesture-handling="'cooperative'"
-                >
-                  <AdvancedMarker
-                    :options="{
-                      position: { lat: parseFloat(item.latitude), lng: parseFloat(item.longitude) },
-                      title: item.name,
-                    }"
-                  >
-                    <Pin background="#ea4335" />
-                    <InfoWindow>
-                      <div class="p-1 text-xs">
-                        <h4 class="font-bold text-zinc-900">{{ item.name }}</h4>
-                        <p class="text-zinc-500 mt-0.5">{{ item.phone || 'Tidak ada telepon' }}</p>
-                      </div>
-                    </InfoWindow>
-                  </AdvancedMarker>
-                </GoogleMap>
-              </div>
-
-              <div v-else class="text-xs text-zinc-400 italic flex items-center gap-1">
-                <MapPin class="w-3 h-3" /> Koordinat belum diset
               </div>
             </TableCell>
             <TableCell class="text-zinc-600">
@@ -410,38 +260,14 @@ onMounted(() => {
           </div>
 
           <div class="space-y-2">
-            <Label for="address">Alamat Lengkap / Cari Lokasi</Label>
+            <Label for="address">Alamat Lengkap</Label>
             <textarea
               id="address"
               v-model="form.address"
-              ref="placeInputRef"
               placeholder="Contoh: Jl. Sudirman No. 10..."
               rows="3"
               class="flex w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2 resize-none"
             ></textarea>
-          </div>
-
-          <div class="space-y-2 mt-4">
-            <Label>Titik Koordinat Lokasi (Klik peta untuk sesuaikan manual)</Label>
-            <div class="w-full h-52 rounded-lg overflow-hidden border border-zinc-200 shadow-inner">
-              <GoogleMap
-                :api-key="MAPS_API_KEY"
-                style="width: 100%; height: 100%"
-                :center="mapCenter"
-                :zoom="form.latitude ? 16 : 11"
-                map-id="DEMO_MAP_ID"
-                @click="handleMapClick"
-              >
-                <AdvancedMarker
-                  v-if="form.latitude && form.longitude"
-                  :options="{
-                    position: { lat: parseFloat(form.latitude), lng: parseFloat(form.longitude) },
-                  }"
-                >
-                  <Pin background="#ea4335" />
-                </AdvancedMarker>
-              </GoogleMap>
-            </div>
           </div>
 
           <div class="space-y-2">

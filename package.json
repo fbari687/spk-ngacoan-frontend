@@ -26,8 +26,7 @@
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.0",
     "vue": "^3.5.32",
-    "vue-router": "^5.0.4",
-    "vue3-google-map": "^0.27.1"
+    "vue-router": "^5.0.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
